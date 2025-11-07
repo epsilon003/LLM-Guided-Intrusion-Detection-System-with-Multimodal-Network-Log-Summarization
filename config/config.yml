@@ -1,0 +1,421 @@
+# LLM-Guided Explainable IDS Configuration File
+# Edit this file to customize your IDS deployment
+
+# ============================================================================
+# PROJECT SETTINGS
+# ============================================================================
+project:
+  name: "LLM-Guided Explainable IDS"
+  version: "1.0.0"
+  description: "Intelligent intrusion detection with natural language explanations"
+  
+# ============================================================================
+# PATH CONFIGURATIONS
+# ============================================================================
+paths:
+  # Data directories
+  data_raw: "data/raw"
+  data_processed: "data/processed"
+  data_sample: "data/sample"
+  
+  # Model directories
+  models: "models"
+  model_checkpoints: "models/checkpoints"
+  
+  # Output directories
+  output: "output"
+  logs: "output/logs"
+  reports: "output/reports"
+  alerts: "output/alerts"
+  
+  # Configuration files
+  config_dir: "config"
+
+# ============================================================================
+# DATASET CONFIGURATION
+# ============================================================================
+dataset:
+  # Primary dataset to use: 'NSL-KDD', 'CICIDS2017', 'UNSW-NB15'
+  primary: "NSL-KDD"
+  
+  # Dataset-specific paths
+  nsl_kdd:
+    train: "data/raw/nsl-kdd/KDDTrain+.txt"
+    test: "data/raw/nsl-kdd/KDDTest+.txt"
+    
+  cicids2017:
+    path: "data/raw/cicids2017"
+    files:
+      - "Monday-WorkingHours.pcap_ISCX.csv"
+      - "Tuesday-WorkingHours.pcap_ISCX.csv"
+      - "Wednesday-workingHours.pcap_ISCX.csv"
+      - "Thursday-WorkingHours-Morning-WebAttacks.pcap_ISCX.csv"
+      - "Friday-WorkingHours-Morning.pcap_ISCX.csv"
+  
+  unsw_nb15:
+    train: "data/raw/unsw-nb15/UNSW_NB15_training-set.csv"
+    test: "data/raw/unsw-nb15/UNSW_NB15_testing-set.csv"
+  
+  # Data preprocessing options
+  preprocessing:
+    handle_missing: true
+    missing_strategy: "zero"  # 'zero', 'mean', 'median', 'drop'
+    normalize: true
+    encoding: "label"  # 'label', 'onehot'
+    test_size: 0.2
+    random_state: 42
+    
+# ============================================================================
+# MODEL CONFIGURATION
+# ============================================================================
+models:
+  # Enable/disable specific models
+  enable_isolation_forest: true
+  enable_random_forest: true
+  enable_dnn: true
+  
+  # Isolation Forest settings (unsupervised)
+  isolation_forest:
+    contamination: 0.1  # Expected proportion of outliers
+    n_estimators: 100
+    max_samples: "auto"
+    random_state: 42
+    n_jobs: -1
+  
+  # Random Forest settings (supervised)
+  random_forest:
+    n_estimators: 100
+    max_depth: 20
+    min_samples_split: 10
+    min_samples_leaf: 4
+    max_features: "sqrt"
+    random_state: 42
+    n_jobs: -1
+    verbose: 0
+  
+  # Deep Neural Network settings (supervised)
+  dnn:
+    hidden_layers: [128, 64, 32]  # Layer sizes
+    activation: "relu"
+    optimizer: "adam"
+    learning_rate: 0.001
+    batch_size: 256
+    epochs: 200
+    validation_split: 0.1
+    early_stopping: true
+    early_stopping_patience: 10
+    random_state: 42
+  
+  # Model ensemble settings
+  ensemble:
+    enabled: false
+    voting: "soft"  # 'hard', 'soft'
+    weights: [0.3, 0.4, 0.3]  # [isolation_forest, random_forest, dnn]
+  
+  # Model persistence
+  save_models: true
+  save_format: "pkl"  # 'pkl', 'h5', 'saved_model'
+  load_on_startup: false
+
+# ============================================================================
+# LLM CONFIGURATION
+# ============================================================================
+llm:
+  # Backend: 'openai', 'anthropic', 'template', 'local'
+  backend: "template"
+  
+  # OpenAI settings
+  openai:
+    api_key: ""  # Set via environment variable: OPENAI_API_KEY
+    model: "gpt-4"  # 'gpt-4', 'gpt-4-turbo', 'gpt-3.5-turbo'
+    temperature: 0.7
+    max_tokens: 1000
+    timeout: 30
+  
+  # Anthropic settings
+  anthropic:
+    api_key: ""  # Set via environment variable: ANTHROPIC_API_KEY
+    model: "claude-3-sonnet-20240229"  # 'claude-3-opus', 'claude-3-sonnet'
+    temperature: 0.7
+    max_tokens: 1000
+    timeout: 30
+  
+  # Local LLM settings (e.g., LLaMA, Mistral via Ollama)
+  local:
+    model: "llama2"
+    host: "http://localhost:11434"
+    temperature: 0.7
+    max_tokens: 1000
+  
+  # Explanation settings
+  explanation:
+    include_summary: true
+    include_technical_details: true
+    include_risk_assessment: true
+    include_recommendations: true
+    include_prevention: true
+    max_features_display: 5
+    
+  # Batch processing
+  batch:
+    enabled: true
+    batch_size: 10
+    generate_reports: true
+
+# ============================================================================
+# DETECTION CONFIGURATION
+# ============================================================================
+detection:
+  # Detection thresholds
+  confidence_threshold: 0.5  # Minimum confidence to flag as anomaly
+  
+  # Severity calculation
+  severity_thresholds:
+    critical: 0.90
+    high: 0.75
+    medium: 0.50
+    low: 0.30
+  
+  # Feature importance
+  top_features_count: 10
+  
+  # Real-time detection
+  realtime:
+    enabled: false
+    interval: 60  # seconds
+    buffer_size: 1000
+  
+  # Alert settings
+  alerts:
+    enabled: true
+    log_to_file: true
+    send_email: false
+    send_webhook: false
+    
+  # False positive reduction
+  fp_reduction:
+    enabled: true
+    whitelist_ips: []
+    blacklist_ips: []
+    trust_score_threshold: 0.8
+
+# ============================================================================
+# DASHBOARD CONFIGURATION
+# ============================================================================
+dashboard:
+  # Server settings
+  host: "localhost"
+  port: 8501
+  
+  # Display settings
+  page_title: "IDS Dashboard"
+  page_icon: "🛡️"
+  layout: "wide"
+  
+  # Refresh settings
+  auto_refresh: false
+  refresh_interval: 60  # seconds
+  
+  # Data limits
+  max_alerts_display: 100
+  max_history_hours: 24
+  
+  # Visualization
+  charts:
+    show_severity_chart: true
+    show_timeline_chart: true
+    show_attack_type_chart: true
+    show_feature_importance: true
+  
+  # Export options
+  export:
+    enabled: true
+    formats: ["json", "csv", "pdf"]
+    include_explanations: true
+
+# ============================================================================
+# LOGGING CONFIGURATION
+# ============================================================================
+logging:
+  # Log level: 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'
+  level: "INFO"
+  
+  # Log format
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  date_format: "%Y-%m-%d %H:%M:%S"
+  
+  # Log files
+  file_logging: true
+  log_file: "output/logs/ids.log"
+  max_bytes: 10485760  # 10MB
+  backup_count: 5
+  
+  # Console logging
+  console_logging: true
+  
+  # Component-specific logging
+  components:
+    preprocessing: "INFO"
+    detection: "INFO"
+    llm: "INFO"
+    dashboard: "INFO"
+
+# ============================================================================
+# EVALUATION CONFIGURATION
+# ============================================================================
+evaluation:
+  # Metrics to calculate
+  metrics:
+    - "accuracy"
+    - "precision"
+    - "recall"
+    - "f1_score"
+    - "roc_auc"
+    - "confusion_matrix"
+    - "false_positive_rate"
+  
+  # Cross-validation
+  cross_validation:
+    enabled: false
+    n_folds: 5
+    shuffle: true
+  
+  # Report generation
+  generate_report: true
+  report_format: "markdown"  # 'markdown', 'html', 'pdf'
+  include_visualizations: true
+
+# ============================================================================
+# NOTIFICATION CONFIGURATION
+# ============================================================================
+notifications:
+  # Email notifications
+  email:
+    enabled: false
+    smtp_server: "smtp.gmail.com"
+    smtp_port: 587
+    username: ""
+    password: ""  # Use environment variable: EMAIL_PASSWORD
+    from_address: "ids@example.com"
+    to_addresses:
+      - "security-team@example.com"
+    alert_on_severities:
+      - "CRITICAL"
+      - "HIGH"
+  
+  # Webhook notifications
+  webhook:
+    enabled: false
+    url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+    method: "POST"
+    headers:
+      Content-Type: "application/json"
+    alert_on_severities:
+      - "CRITICAL"
+      - "HIGH"
+  
+  # SMS notifications (via Twilio)
+  sms:
+    enabled: false
+    account_sid: ""
+    auth_token: ""  # Use environment variable: TWILIO_AUTH_TOKEN
+    from_number: ""
+    to_numbers: []
+    alert_on_severities:
+      - "CRITICAL"
+
+# ============================================================================
+# SECURITY CONFIGURATION
+# ============================================================================
+security:
+  # API key management
+  use_environment_variables: true
+  
+  # Rate limiting
+  rate_limiting:
+    enabled: true
+    max_requests_per_hour: 1000
+  
+  # Access control
+  access_control:
+    enabled: false
+    require_authentication: false
+    allowed_ips: []
+  
+  # Data encryption
+  encryption:
+    encrypt_sensitive_data: false
+    encryption_algorithm: "AES256"
+
+# ============================================================================
+# PERFORMANCE CONFIGURATION
+# ============================================================================
+performance:
+  # Multiprocessing
+  multiprocessing:
+    enabled: true
+    n_workers: -1  # -1 for all cores
+  
+  # Caching
+  caching:
+    enabled: true
+    cache_directory: "cache"
+    cache_ttl: 3600  # seconds
+  
+  # Memory management
+  memory:
+    max_memory_usage: "8GB"
+    batch_processing: true
+    batch_size: 1000
+  
+  # GPU settings
+  gpu:
+    enabled: false
+    device_id: 0
+    allow_growth: true
+
+# ============================================================================
+# EXPERIMENTAL FEATURES
+# ============================================================================
+experimental:
+  # Advanced features (use with caution)
+  adversarial_training: false
+  federated_learning: false
+  transfer_learning: false
+  auto_hyperparameter_tuning: false
+  
+  # Research mode
+  research_mode: false
+  save_intermediate_results: false
+
+# ============================================================================
+# ENVIRONMENT-SPECIFIC OVERRIDES
+# ============================================================================
+# These can be overridden by environment variables or separate config files
+
+development:
+  logging:
+    level: "DEBUG"
+  dashboard:
+    auto_refresh: true
+  
+production:
+  logging:
+    level: "WARNING"
+  security:
+    access_control:
+      enabled: true
+      require_authentication: true
+  notifications:
+    email:
+      enabled: true
+  
+testing:
+  dataset:
+    primary: "NSL-KDD"
+  models:
+    dnn:
+      epochs: 10
+  evaluation:
+    cross_validation:
+      enabled: true
