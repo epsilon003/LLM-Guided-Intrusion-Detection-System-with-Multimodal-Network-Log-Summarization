@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM-Guided IDS - Live Simulation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 100vw;
+            height: 100vh;
+            display: grid;
+            grid-template-columns: 350px 1fr 350px;
+            grid-template-rows: 80px 1fr 60px;
+            gap: 10px;
+            padding: 10px;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo h1 {
+            font-size: 1.8em;
+            color: #ffffff;
+            font-weight: 300;
+            letter-spacing: 1px;
+        }
+
+        .stats-header {
+            display: flex;
+            gap: 40px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: 300;
+            display: block;
+            color: #ffffff;
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .left-panel, .right-panel {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .panel-title {
+            font-size: 1.1em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #333;
+            color: #ffffff;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .network-node {
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 3px solid #4CAF50;
+            transition: all 0.3s;
+        }
+
+        .network-node.attack {
+            border-left-color: #ff0000;
+            background: #2a1515;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .main-canvas {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .alert-popup {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a0000;
+            border: 2px solid #ff0000;
+            padding: 20px 30px;
+            border-radius: 6px;
+            display: none;
+            animation: slideDown 0.5s ease-out;
+            z-index: 1000;
+            max-width: 600px;
+        }
+
+        .alert-popup.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateX(-50%) translateY(-100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .alert-title {
+            font-size: 1.3em;
+            font-weight: 400;
+            margin-bottom: 10px;
+            color: #ff0000;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .alert-details {
+            font-size: 0.95em;
+            line-height: 1.8;
+            color: #e0e0e0;
+        }
+
+        .detection-log {
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 12px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            border-left: 2px solid #666;
+        }
+
+        .detection-log.critical {
+            border-left-color: #ff0000;
+            background: #2a1515;
+        }
+
+        .detection-log.warning {
+            border-left-color: #ff9800;
+        }
+
+        .detection-log.info {
+            border-left-color: #4CAF50;
+        }
+
+        .controls {
+            grid-column: 1 / -1;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+
+        button {
+            padding: 12px 25px;
+            font-size: 0.95em;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 400;
+        }
+
+        button:hover {
+            background: #3a3a3a;
+            border-color: #666;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button.danger {
+            background: #2a0000;
+            border-color: #ff0000;
+            color: #ff6666;
+        }
+
+        button.danger:hover {
+            background: #3a0000;
+        }
+
+        button.success {
+            background: #002a00;
+            border-color: #00ff00;
+            color: #66ff66;
+        }
+
+        button.success:hover {
+            background: #003a00;
+        }
+
+        .model-status {
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .model-name {
+            font-weight: 400;
+            margin-bottom: 8px;
+            color: #ffffff;
+            font-size: 0.95em;
+        }
+
+        .progress-bar {
+            background: #3a3a3a;
+            border-radius: 2px;
+            height: 6px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #ffffff;
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 3px;
+            font-size: 0.75em;
+            font-weight: 400;
+            margin: 5px 5px 5px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: 1px solid;
+        }
+
+        .badge.critical {
+            background: #2a0000;
+            border-color: #ff0000;
+            color: #ff6666;
+        }
+
+        .badge.high {
+            background: #2a1500;
+            border-color: #ff9800;
+            color: #ffb366;
+        }
+
+        .badge.medium {
+            background: #2a2200;
+            border-color: #ffc107;
+            color: #ffd666;
+        }
+
+        .badge.low {
+            background: #002a00;
+            border-color: #4CAF50;
+            color: #66ff66;
+        }
+
+        .badge.normal {
+            background: #001a2a;
+            border-color: #2196F3;
+            color: #66b3ff;
+        }
+
+        .explanation-box {
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 2px solid #666;
+        }
+
+        .explanation-title {
+            font-weight: 400;
+            margin-bottom: 8px;
+            color: #ffffff;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #666;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.active {
+            background: #00ff00;
+            box-shadow: 0 0 8px #00ff00;
+        }
+
+        .status-indicator.inactive {
+            background: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">
+                <h1>LLM-GUIDED INTRUSION DETECTION SYSTEM</h1>
+            </div>
+            <div class="stats-header">
+                <div class="stat-item">
+                    <span class="stat-number" id="totalPackets">0</span>
+                    <span class="stat-label">Packets Analyzed</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="threatsDetected">0</span>
+                    <span class="stat-label">Threats Detected</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number" id="systemHealth">100%</span>
+                    <span class="stat-label">System Health</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="left-panel">
+            <div class="panel-title">Network Activity</div>
+            <div id="networkNodes"></div>
+        </div>
+
+        <div class="main-canvas">
+            <canvas id="networkCanvas"></canvas>
+            <div class="alert-popup" id="alertPopup">
+                <div class="alert-title">CRITICAL THREAT DETECTED</div>
+                <div class="alert-details" id="alertDetails"></div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="panel-title">Detection Models</div>
+            <div id="modelStatus"></div>
+            <div class="panel-title" style="margin-top: 20px;">Recent Detections</div>
+            <div id="detectionLog"></div>
+        </div>
+
+        <div class="controls">
+            <button onclick="startSimulation()" class="success">Start Simulation</button>
+            <button onclick="stopSimulation()" class="danger">Stop</button>
+            <button onclick="triggerAttack('dos')">Simulate DoS Attack</button>
+            <button onclick="triggerAttack('probe')">Simulate Probe</button>
+            <button onclick="resetSimulation()">Reset</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('networkCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+
+        let isRunning = false;
+        let animationId = null;
+        let packets = [];
+        let nodes = [];
+        let stats = {
+            totalPackets: 0,
+            threatsDetected: 0,
+            normalPackets: 0
+        };
+
+        const serverNode = { x: canvas.width / 2, y: canvas.height / 2, radius: 40, type: 'server', label: 'Server' };
+        const clientNodes = [];
+
+        for (let i = 0; i < 8; i++) {
+            const angle = (Math.PI * 2 * i) / 8;
+            const distance = 250;
+            clientNodes.push({
+                x: canvas.width / 2 + Math.cos(angle) * distance,
+                y: canvas.height / 2 + Math.sin(angle) * distance,
+                radius: 25,
+                type: 'client',
+                label: `Client ${i + 1}`,
+                ip: `192.168.1.${100 + i}`
+            });
+        }
+
+        nodes = [serverNode, ...clientNodes];
+
+        class Packet {
+            constructor(from, to, isAttack = false, attackType = null) {
+                this.from = from;
+                this.to = to;
+                this.x = from.x;
+                this.y = from.y;
+                this.progress = 0;
+                this.speed = 0.02 + Math.random() * 0.02;
+                this.isAttack = isAttack;
+                this.attackType = attackType;
+                this.color = isAttack ? '#ff0000' : '#00ff00';
+                this.detected = false;
+            }
+
+            update() {
+                this.progress += this.speed;
+                this.x = this.from.x + (this.to.x - this.from.x) * this.progress;
+                this.y = this.from.y + (this.to.y - this.from.y) * this.progress;
+
+                if (this.isAttack && !this.detected && this.progress > 0.5) {
+                    if (Math.random() < 0.3) {
+                        this.detected = true;
+                        detectThreat(this);
+                    }
+                }
+
+                return this.progress < 1;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = this.detected ? '#ffff00' : this.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                if (this.isAttack) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.from.x, this.from.y);
+                    ctx.lineTo(this.x, this.y);
+                    ctx.strokeStyle = this.color + '40';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            }
+        }
+
+        function drawNodes() {
+            nodes.forEach(node => {
+                if (node.type === 'client') {
+                    ctx.beginPath();
+                    ctx.moveTo(node.x, node.y);
+                    ctx.lineTo(serverNode.x, serverNode.y);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+                
+                if (node.type === 'server') {
+                    ctx.fillStyle = '#3a3a3a';
+                } else {
+                    ctx.fillStyle = '#2a2a2a';
+                }
+                
+                ctx.fill();
+                ctx.strokeStyle = '#666';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#e0e0e0';
+                ctx.fillText(node.type === 'server' ? 'SERVER' : 'CLIENT', node.x, node.y);
+            });
+        }
+
+        function generateTraffic() {
+            if (Math.random() < 0.3) {
+                const fromNode = clientNodes[Math.floor(Math.random() * clientNodes.length)];
+                const isAttack = Math.random() < 0.15;
+                const attackType = isAttack ? ['dos', 'probe', 'r2l', 'u2r'][Math.floor(Math.random() * 4)] : null;
+                
+                packets.push(new Packet(fromNode, serverNode, isAttack, attackType));
+                stats.totalPackets++;
+                
+                if (!isAttack) stats.normalPackets++;
+            }
+        }
+
+        function detectThreat(packet) {
+            stats.threatsDetected++;
+            showAlert(packet);
+            logDetection(packet);
+            updateNetworkNodes(packet);
+            updateModelStatus(packet);
+        }
+
+        function showAlert(packet) {
+            const alertPopup = document.getElementById('alertPopup');
+            const alertDetails = document.getElementById('alertDetails');
+            
+            const attackDescriptions = {
+                dos: 'Denial of Service attack detected. System overwhelmed with excessive traffic attempting to exhaust server resources.',
+                probe: 'Network scanning activity detected. Attacker probing for vulnerabilities and open ports.',
+                r2l: 'Remote-to-Local attack attempt detected. Unauthorized access attempt from external source.',
+                u2r: 'Privilege escalation attempt detected. Attacker attempting to gain root/admin access.'
+            };
+            
+            alertDetails.innerHTML = `
+                <strong>Attack Type:</strong> ${packet.attackType.toUpperCase()}<br>
+                <strong>Source:</strong> ${packet.from.ip}<br>
+                <strong>Confidence:</strong> ${(85 + Math.random() * 15).toFixed(1)}%<br>
+                <strong>Severity:</strong> <span class="badge critical">CRITICAL</span><br><br>
+                ${attackDescriptions[packet.attackType]}
+            `;
+            
+            alertPopup.classList.add('show');
+            
+            setTimeout(() => {
+                alertPopup.classList.remove('show');
+            }, 5000);
+        }
+
+        function logDetection(packet) {
+            const log = document.getElementById('detectionLog');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const entry = document.createElement('div');
+            entry.className = 'detection-log critical';
+            entry.innerHTML = `
+                <strong>[${timestamp}]</strong> ${packet.attackType.toUpperCase()} detected<br>
+                <small>Source: ${packet.from.ip} → Server</small><br>
+                <small>ML Model: Random Forest (96% confidence)</small>
+            `;
+            
+            log.insertBefore(entry, log.firstChild);
+            
+            while (log.children.length > 10) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        function updateNetworkNodes(packet) {
+            const nodesDiv = document.getElementById('networkNodes');
+            
+            let nodeEntry = document.querySelector(`[data-ip="${packet.from.ip}"]`);
+            
+            if (!nodeEntry) {
+                nodeEntry = document.createElement('div');
+                nodeEntry.className = 'network-node attack';
+                nodeEntry.setAttribute('data-ip', packet.from.ip);
+                nodesDiv.appendChild(nodeEntry);
+            } else {
+                nodeEntry.className = 'network-node attack';
+            }
+            
+            nodeEntry.innerHTML = `
+                <div><strong>${packet.from.label}</strong></div>
+                <div style="font-size: 0.85em; opacity: 0.7;">${packet.from.ip}</div>
+                <div style="margin-top: 8px;">
+                    <span class="badge critical">${packet.attackType.toUpperCase()}</span>
+                    <span class="badge" style="background: #2a2a2a; border-color: #666; color: #aaa;">Blocked</span>
+                </div>
+            `;
+            
+            setTimeout(() => {
+                nodeEntry.className = 'network-node';
+            }, 10000);
+        }
+
+        function updateModelStatus(packet) {
+            const modelDiv = document.getElementById('modelStatus');
+            
+            const models = [
+                { name: 'Random Forest', accuracy: 95 + Math.random() * 5, active: true },
+                { name: 'Isolation Forest', accuracy: 88 + Math.random() * 4, active: true },
+                { name: 'Deep Neural Network', accuracy: 96 + Math.random() * 4, active: true }
+            ];
+            
+            modelDiv.innerHTML = models.map(model => `
+                <div class="model-status">
+                    <div class="model-name">${model.name}</div>
+                    <div style="font-size: 0.85em; opacity: 0.7;">
+                        Accuracy: ${model.accuracy.toFixed(1)}%
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${model.accuracy}%"></div>
+                    </div>
+                    <div style="font-size: 0.8em; color: #00ff00; margin-top: 5px;">
+                        <span class="status-indicator active"></span>Active
+                    </div>
+                </div>
+            `).join('');
+            
+            const explanation = document.createElement('div');
+            explanation.className = 'explanation-box';
+            explanation.innerHTML = `
+                <div class="explanation-title">LLM Explanation Generated</div>
+                <div style="font-size: 0.9em; line-height: 1.6; opacity: 0.9;">
+                    "${packet.attackType.toUpperCase()} attack detected from ${packet.from.ip}. 
+                    Immediate action required: Block source IP and enable rate limiting."
+                </div>
+            `;
+            modelDiv.appendChild(explanation);
+        }
+
+        function updateStats() {
+            document.getElementById('totalPackets').textContent = stats.totalPackets;
+            document.getElementById('threatsDetected').textContent = stats.threatsDetected;
+            
+            const health = Math.max(50, 100 - (stats.threatsDetected * 5));
+            document.getElementById('systemHealth').textContent = health + '%';
+        }
+
+        function animate() {
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            drawNodes();
+            
+            packets = packets.filter(packet => {
+                const alive = packet.update();
+                if (alive) packet.draw();
+                return alive;
+            });
+            
+            if (isRunning) {
+                generateTraffic();
+            }
+            
+            updateStats();
+            
+            animationId = requestAnimationFrame(animate);
+        }
+
+        function startSimulation() {
+            isRunning = true;
+            if (!animationId) {
+                animate();
+            }
+        }
+
+        function stopSimulation() {
+            isRunning = false;
+        }
+
+        function resetSimulation() {
+            packets = [];
+            stats = { totalPackets: 0, threatsDetected: 0, normalPackets: 0 };
+            document.getElementById('networkNodes').innerHTML = '';
+            document.getElementById('detectionLog').innerHTML = '';
+            updateStats();
+        }
+
+        function triggerAttack(type) {
+            const fromNode = clientNodes[Math.floor(Math.random() * clientNodes.length)];
+            
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    packets.push(new Packet(fromNode, serverNode, true, type));
+                    stats.totalPackets++;
+                }, i * 100);
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            
+            serverNode.x = canvas.width / 2;
+            serverNode.y = canvas.height / 2;
+            
+            clientNodes.forEach((node, i) => {
+                const angle = (Math.PI * 2 * i) / 8;
+                const distance = Math.min(canvas.width, canvas.height) / 4;
+                node.x = canvas.width / 2 + Math.cos(angle) * distance;
+                node.y = canvas.height / 2 + Math.sin(angle) * distance;
+            });
+        });
+
+        animate();
+        updateModelStatus({ from: { ip: '0.0.0.0' }, attackType: 'system' });
+    </script>
+</body>
+</html>
